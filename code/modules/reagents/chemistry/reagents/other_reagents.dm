@@ -11,12 +11,6 @@
 	shot_glass_icon_state = "shotglassred"
 	penetrates_skin = NONE
 
-	// FEED ME
-/datum/reagent/blood/on_hydroponics_apply(obj/item/seeds/myseed, datum/reagents/chems, obj/machinery/hydroponics/mytray)
-	. = ..()
-	if(chems.has_reagent(src.type, 1))
-		mytray.adjustPests(rand(2,3))
-
 /datum/reagent/blood/expose_mob(mob/living/exposed_mob, methods=TOUCH, reac_volume, show_message=TRUE, touch_protection=0)
 	. = ..()
 	if(data && data["viruses"])
@@ -224,14 +218,6 @@
 	glass_desc = "A glass of holy water."
 	self_consuming = TRUE //divine intervention won't be limited by the lack of a liver
 
-	// Holy water. Mostly the same as water, it also heals the plant a little with the power of the spirits. Also ALSO increases instability.
-/datum/reagent/water/holywater/on_hydroponics_apply(obj/item/seeds/myseed, datum/reagents/chems, obj/machinery/hydroponics/mytray)
-	if(chems.has_reagent(src.type, 1))
-		mytray.adjustWater(round(chems.get_reagent_amount(src.type) * 1))
-		mytray.adjustHealth(round(chems.get_reagent_amount(src.type) * 0.1))
-		if(myseed)
-			myseed.adjust_instability(round(chems.get_reagent_amount(src.type) * 0.15))
-
 /datum/reagent/water/holywater/on_mob_metabolize(mob/living/L)
 	..()
 	ADD_TRAIT(L, TRAIT_HOLY, type)
@@ -287,6 +273,7 @@
 			qdel(R)
 	exposed_turf.Bless()
 
+// Holy water. Mostly the same as water, it also heals the plant a little with the power of the spirits. Also ALSO increases instability.
 /datum/reagent/water/holywater/on_hydroponics_apply(obj/item/seeds/myseed, datum/reagents/chems, obj/machinery/hydroponics/mytray)
 	. = ..()
 	mytray.adjustWater(round(chems.get_reagent_amount(src.type) * 1))
@@ -740,10 +727,10 @@
 
 /datum/reagent/copper/expose_obj(obj/exposed_obj, reac_volume)
 	. = ..()
-	if(!istype(exposed_obj, /obj/item/stack/sheet/metal))
+	if(!istype(exposed_obj, /obj/item/stack/sheet/iron))
 		return
 
-	var/obj/item/stack/sheet/metal/M = exposed_obj
+	var/obj/item/stack/sheet/iron/M = exposed_obj
 	reac_volume = min(reac_volume, M.amount)
 	new/obj/item/stack/tile/bronze(get_turf(M), reac_volume)
 	M.use(reac_volume)
@@ -1617,7 +1604,7 @@
 	var/carpet_type = /turf/open/floor/carpet
 
 /datum/reagent/carpet/expose_turf(turf/exposed_turf, reac_volume)
-	if(isplatingturf(exposed_turf) || istype(exposed_turf, /turf/open/floor/plasteel))
+	if(isplatingturf(exposed_turf) || istype(exposed_turf, /turf/open/floor/iron))
 		var/turf/open/floor/target_floor = exposed_turf
 		target_floor.PlaceOnTop(carpet_type, flags = CHANGETURF_INHERIT_AIR)
 	..()
@@ -1677,15 +1664,17 @@
 
 /datum/reagent/carpet/royal/on_mob_life(mob/living/carbon/M)
 	. = ..()
-	if(!M.mind?.assigned_role)
-		return
-	switch(M.mind.assigned_role)
-		if("Chief Medical Officer", "Captain", "Chief Engineer", "Research Director", "Head of Personnel")
+	var/obj/item/organ/liver/liver = M.getorganslot(ORGAN_SLOT_LIVER)
+	if(liver)
+		// Heads of staff and the captain have a "royal metabolism"
+		if(HAS_TRAIT(liver, TRAIT_ROYAL_METABOLISM))
 			if(prob(10))
 				to_chat(M, "You feel like royalty.")
 			if(prob(5))
 				M.say(pick("Peasants..","This carpet is worth more than your contracts!","I could fire you at any time..."), forced = "royal carpet")
-		if("Quartermaster")
+
+		// The quartermaster, as a semi-head, has a "pretender royal" metabolism
+		else if(HAS_TRAIT(liver, TRAIT_PRETENDER_ROYAL_METABOLISM))
 			if(prob(15))
 				to_chat(M, "You feel like an impostor...")
 
@@ -2126,9 +2115,6 @@
 	description = "A colorless liquid that suppresses violence in its subjects. Cheaper to synthesize than normal Pax, but wears off faster."
 	metabolization_rate = 1.5 * REAGENTS_METABOLISM
 
-/datum/reagent/peaceborg
-	can_synth = FALSE
-
 /datum/reagent/peaceborg/confuse
 	name = "Dizzying Solution"
 	description = "Makes the target off balance and dizzy"
@@ -2324,6 +2310,7 @@
 	color = "#E6E6DA"
 	taste_mult = 0
 
+// "Second wind" reagent generated when someone suffers a wound. Epinephrine, adrenaline, and stimulants are all already taken so here we are
 /datum/reagent/determination
 	name = "Determination"
 	description = "For when you need to push on a little more. Do NOT allow near plants."
